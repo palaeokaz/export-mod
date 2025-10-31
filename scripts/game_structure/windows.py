@@ -776,6 +776,16 @@ class ChangeCatName(UIWindow):
                 if old_name != str(self.the_cat.name):
                     self.name_changed.show()
                     self.heading.set_text(f"-Change {self.the_cat.name}'s Name-")
+                    
+                    from scripts.event_class import Single_Event
+                    new_name = str(self.the_cat.name)
+                    game.cur_events_list.append(
+                        Single_Event(
+                            f"{old_name} has been renamed to {new_name}",
+                            ["misc"],
+                            [self.the_cat.ID]
+                        )
+                    )
                 else:
                     self.name_changed.hide()
 

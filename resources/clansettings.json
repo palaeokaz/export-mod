@@ -59,6 +59,29 @@
             "Show moons and seasons widget",
             "Displays Clan age and current Clan season on several pages.",
             false
+        ],
+        "export moon events": [
+            "Export events each moon",
+            "If enabled, writes a readable text log of all events (organized by category: patrols, ceremonies, births/deaths, health, relationships, other clans, miscellaneous, herb events, and freshkill events) at the end of every moon. Also includes a clan roster snapshot and logs name changes. Files are saved to saves/<ClanName>/event_logs/ as .txt files.",
+            false
+        ],
+        "export cat details": [
+            "Include full cat details in exports",
+            "Adds detailed information for each cat in the roster including personality, skills, relationships, mate, parents, kittens, mentor/apprentice, health, and conditions. Only works if 'Export events each moon' is enabled.",
+            false,
+            [
+                "export moon events",
+                true
+            ]
+        ],
+        "export clan stats": [
+            "Include clan statistics in exports",
+            "Adds clan statistics section showing births/deaths/joins this moon, age distribution, average age, and health summary. Only works if 'Export events each moon' is enabled.",
+            false,
+            [
+                "export moon events",
+                true
+            ]
         ]
     },
     "role": {

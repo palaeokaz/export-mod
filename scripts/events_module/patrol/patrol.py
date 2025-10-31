@@ -142,7 +142,9 @@ class Patrol:
 
         Patrol.used_patrols.append(self.patrol_event.patrol_id)
 
-        return self.process_text(self.patrol_event.intro_text, None)
+        self.patrol_intro = self.process_text(self.patrol_event.intro_text, None)
+        
+        return self.patrol_intro
 
     def proceed_patrol(self, path: str = "proceed") -> Tuple[str, str, Optional[str]]:
         """Proceed the patrol to the next step.
@@ -153,11 +155,47 @@ class Patrol:
                 print(
                     f"PATROL ID: {self.patrol_event.patrol_id} | SUCCESS: N/A (did not proceed)"
                 )
-                return self.process_text(self.patrol_event.decline_text, None), "", None
+                from scripts.event_class import Single_Event
+                from scripts.game_structure import game
+
+                text = self.process_text(self.patrol_event.decline_text, None)
+                try:
+                    involved_ids = [c.ID for c in self.patrol_cats]
+                except Exception:
+                    involved_ids = []
+                intro = getattr(self, 'patrol_intro', '')
+                if intro:
+                    full_text = f"{intro}\n\n[DECLINED] {text}"
+                else:
+                    full_text = f"[DECLINED] {text}"
+                game.cur_events_list.append(
+                    Single_Event(full_text, ["patrol", "misc"], involved_ids)
+                )
+                return text, "", None
             else:
                 return "Error - no event chosen", "", None
 
-        return self.determine_outcome(antagonize=(path == "antag"))
+        display_text, results_text, art = self.determine_outcome(antagonize=(path == "antag"))
+
+        from scripts.event_class import Single_Event
+        from scripts.game_structure import game
+
+        try:
+            involved_ids = [c.ID for c in self.patrol_cats]
+        except Exception:
+            involved_ids = []
+
+        combined_text = display_text if results_text == "" else f"{display_text} {results_text}"
+        path_indicator = "[ANTAGONIZE]" if path == "antag" else "[PROCEED]"
+        intro = getattr(self, 'patrol_intro', '')
+        if intro:
+            full_text = f"{intro}\n\n{path_indicator} {combined_text}"
+        else:
+            full_text = f"{path_indicator} {combined_text}"
+        game.cur_events_list.append(
+            Single_Event(full_text, ["patrol"], involved_ids)
+        )
+        return display_text, results_text, art
 
     def add_patrol_cats(self, patrol_cats: List[Cat], clan: Clan) -> None:
         """Add the list of cats to the patrol class and handles to set all needed values.

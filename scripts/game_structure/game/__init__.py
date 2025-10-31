@@ -170,6 +170,441 @@ def save_events():
     safe_save(f"{get_save_dir()}/{clan.name}/events.json", events_list)
 
 
+def export_current_moon_events():
+    """
+    Export all events for the current moon into a readable text file under the clan's event_logs folder.
+    Includes patrol logs, ceremonies, interactions, herb logs, and freshkill logs organized by category.
+    """
+    if not clan:
+        return
+
+    from scripts.clan_package.settings import get_clan_setting
+    from scripts.cat.cats import Cat
+    from scripts.cat.enums import CatRank
+
+    def clean_text(text):
+        """Remove HTML/formatting tags from text."""
+        import re
+        text = re.sub(r'<[^>]+>', '', str(text))
+        return text
+
+
+    patrols = []
+    ceremonies = []
+    births_deaths = []
+    health_events = []
+    positive_relations = []
+    negative_relations = []
+    other_clan_events = []
+    misc_events = []
+    
+    for event in cur_events_list:
+        event_types = event.types if hasattr(event, 'types') and event.types else []
+        event_text = event.text if hasattr(event, 'text') else str(event)
+        event_text = clean_text(event_text)
+        
+        if "patrol" in event_types:
+            patrols.append(event_text)
+        elif "ceremony" in event_types:
+            ceremonies.append(event_text)
+        elif "birth_death" in event_types:
+            births_deaths.append(event_text)
+        elif "health" in event_types:
+            health_events.append(event_text)
+        elif "relation" in event_types:
+            lower_text = event_text.lower()
+            if "negative effect" in lower_text:
+                negative_relations.append(event_text)
+            elif "positive effect" in lower_text:
+                positive_relations.append(event_text)
+            else:
+                positive_relations.append(event_text)
+        elif "other_clans" in event_types:
+            other_clan_events.append(event_text)
+        else:
+            misc_events.append(event_text)
+    
+    lines = []
+    lines.append(f"╔═══════════════════════════════════════════════════════════════════════════════╗")
+    lines.append(f"║  {clan.name}Clan - Moon {clan.age}")
+    if hasattr(clan, "current_season"):
+        lines.append(f"║  Season: {clan.current_season}")
+    biome = str(clan.override_biome) if getattr(clan, "override_biome", None) else str(getattr(clan, "biome", ""))
+    if biome:
+        lines.append(f"║  Biome: {biome}")
+    lines.append(f"╚═══════════════════════════════════════════════════════════════════════════════╝")
+    lines.append("")
+    
+    if patrols:
+        lines.append("─" * 80)
+        lines.append("PATROLS")
+        lines.append("─" * 80)
+        for i, patrol in enumerate(patrols, 1):
+            lines.append(f"  {i}. {patrol}")
+            if i < len(patrols):
+                lines.append("")
+        lines.append("")
+    
+    if ceremonies:
+        lines.append("─" * 80)
+        lines.append("CEREMONIES")
+        lines.append("─" * 80)
+        for ceremony in ceremonies:
+            lines.append(f"  • {ceremony}")
+        lines.append("")
+    
+    if births_deaths:
+        lines.append("─" * 80)
+        lines.append("BIRTHS & DEATHS")
+        lines.append("─" * 80)
+        for event in births_deaths:
+            lines.append(f"  • {event}")
+        lines.append("")
+    
+    if health_events:
+        lines.append("─" * 80)
+        lines.append("HEALTH & INJURIES")
+        lines.append("─" * 80)
+        for event in health_events:
+            lines.append(f"  • {event}")
+        lines.append("")
+    
+    if positive_relations:
+        lines.append("─" * 80)
+        lines.append("RELATIONSHIPS - POSITIVE")
+        lines.append("─" * 80)
+        for event in positive_relations:
+            lines.append(f"  • {event}")
+        lines.append("")
+    
+    if negative_relations:
+        lines.append("─" * 80)
+        lines.append("RELATIONSHIPS - NEGATIVE")
+        lines.append("─" * 80)
+        for event in negative_relations:
+            lines.append(f"  • {event}")
+        lines.append("")
+    
+    if other_clan_events:
+        lines.append("─" * 80)
+        lines.append("OTHER CLANS")
+        lines.append("─" * 80)
+        for event in other_clan_events:
+            lines.append(f"  • {event}")
+        lines.append("")
+    
+    if misc_events:
+        lines.append("─" * 80)
+        lines.append("OTHER EVENTS")
+        lines.append("─" * 80)
+        for event in misc_events:
+            lines.append(f"  • {event}")
+        lines.append("")
+    
+    if herb_events_list:
+        lines.append("─" * 80)
+        lines.append("HERB GATHERING")
+        lines.append("─" * 80)
+        for herb in herb_events_list:
+            lines.append(f"  • {clean_text(herb)}")
+        lines.append("")
+    
+    if freshkill_event_list:
+        lines.append("─" * 80)
+        lines.append("FRESH-KILL PILE")
+        lines.append("─" * 80)
+        for prey in freshkill_event_list:
+            lines.append(f"  • {clean_text(prey)}")
+        lines.append("")
+    
+    try:
+        if get_clan_setting("export cat details"):
+            lines.append("")
+            lines.append("─" * 80)
+            lines.append("CLAN MEMBERS (DETAILED)")
+            lines.append("─" * 80)
+            lines.append("")
+            
+            living_cats = []
+            for cat in Cat.all_cats.values():
+                if not cat.status.alive_in_player_clan:
+                    continue
+                living_cats.append(cat)
+            
+            rank_order = {
+                CatRank.LEADER: 0,
+                CatRank.DEPUTY: 1,
+                CatRank.MEDICINE_CAT: 2,
+                CatRank.MEDIATOR: 3,
+                CatRank.WARRIOR: 4,
+                CatRank.APPRENTICE: 5,
+                CatRank.MEDICINE_APPRENTICE: 6,
+                CatRank.MEDIATOR_APPRENTICE: 7,
+                CatRank.KITTEN: 8,
+                CatRank.NEWBORN: 9,
+                CatRank.ELDER: 10
+            }
+            living_cats.sort(key=lambda c: (rank_order.get(c.status.rank, 99), str(c.name)))
+            
+            for cat in living_cats:
+                lines.append(f"{cat.name} ({cat.moons} moons) - {cat.status.rank.name.replace('_', ' ').upper()}")
+                
+                lines.append(f"  Gender: {cat.gender}")
+                if hasattr(cat, 'genderalign') and cat.genderalign:
+                    lines.append(f"  Gender Identity: {cat.genderalign}")
+                
+                if hasattr(cat, 'personality') and cat.personality:
+                    lines.append(f"  Personality: {cat.personality.trait}")
+                if hasattr(cat, 'skills') and cat.skills:
+                    skill_str = cat.skills.skill_string() if hasattr(cat.skills, 'skill_string') else "Unknown"
+                    lines.append(f"  Skill: {skill_str}")
+                if hasattr(cat, 'experience') and cat.experience is not None and hasattr(cat, 'experience_level') and cat.experience_level:
+                    lines.append(f"  Experience: {cat.experience} ({cat.experience_level})")
+                elif hasattr(cat, 'experience') and cat.experience is not None:
+                    lines.append(f"  Experience: {cat.experience}")
+                elif hasattr(cat, 'experience_level') and cat.experience_level:
+                    lines.append(f"  Experience: {cat.experience_level}")
+                
+                if cat.mate:
+                    mate_names = []
+                    for mate_id in cat.mate:
+                        mate_cat = Cat.fetch_cat(mate_id)
+                        if mate_cat:
+                            mate_names.append(str(mate_cat.name))
+                    if mate_names:
+                        lines.append(f"  Mate(s): {', '.join(mate_names)}")
+                
+                parents = []
+                if cat.parent1:
+                    parent1 = Cat.fetch_cat(cat.parent1)
+                    if parent1:
+                        parents.append(str(parent1.name))
+                if cat.parent2:
+                    parent2 = Cat.fetch_cat(cat.parent2)
+                    if parent2:
+                        parents.append(str(parent2.name))
+                if parents:
+                    lines.append(f"  Parents: {' & '.join(parents)}")
+                
+                kittens_list = cat.get_children() if hasattr(cat, 'get_children') else []
+                if kittens_list:
+                    kitten_names = []
+                    for kit_id in kittens_list:
+                        kit = Cat.fetch_cat(kit_id)
+                        if kit and not kit.dead:
+                            kitten_names.append(str(kit.name))
+                    if kitten_names:
+                        lines.append(f"  Kittens: {', '.join(kitten_names[:5])}")
+                        if len(kitten_names) > 5:
+                            lines.append(f"    ... and {len(kitten_names) - 5} more")
+                
+                if cat.mentor:
+                    mentor = Cat.fetch_cat(cat.mentor)
+                    if mentor:
+                        lines.append(f"  Mentor: {mentor.name}")
+                if cat.apprentice:
+                    app_names = []
+                    for app_id in cat.apprentice:
+                        app = Cat.fetch_cat(app_id)
+                        if app:
+                            app_names.append(str(app.name))
+                    if app_names:
+                        lines.append(f"  Apprentice(s): {', '.join(app_names)}")
+                
+                # Health
+                health_issues = []
+                if cat.injuries:
+                    for injury in cat.injuries.values():
+                        if hasattr(injury, 'name'):
+                            health_issues.append(f"Injury: {injury.name}")
+                if cat.illnesses:
+                    for illness in cat.illnesses.values():
+                        if hasattr(illness, 'name'):
+                            health_issues.append(f"Illness: {illness.name}")
+                if cat.permanent_condition:
+                    for condition in cat.permanent_condition.values():
+                        if hasattr(condition, 'name'):
+                            health_issues.append(f"Condition: {condition.name}")
+                
+                if health_issues:
+                    lines.append(f"  Health: {', '.join(health_issues)}")
+                else:
+                    lines.append("  Health: Healthy")
+                
+                lines.append("")
+            
+            lines.append(f"Total Clan Members: {len(living_cats)}")
+            
+        else:
+            leaders = []
+            deputies = []
+            medicine_cats = []
+            mediators = []
+            warriors = []
+            apprentices = []
+            medicine_apprentices = []
+            mediator_apprentices = []
+            kittens = []
+            elders = []
+            
+            for cat in Cat.all_cats.values():
+                if not cat.status.alive_in_player_clan:
+                    continue
+                    
+                cat_name = str(cat.name)
+                cat_age = cat.moons
+                
+                if cat.status.rank == CatRank.LEADER:
+                    leaders.append(f"{cat_name} ({cat_age} moons)")
+                elif cat.status.rank == CatRank.DEPUTY:
+                    deputies.append(f"{cat_name} ({cat_age} moons)")
+                elif cat.status.rank == CatRank.MEDICINE_CAT:
+                    medicine_cats.append(f"{cat_name} ({cat_age} moons)")
+                elif cat.status.rank == CatRank.MEDIATOR:
+                    mediators.append(f"{cat_name} ({cat_age} moons)")
+                elif cat.status.rank == CatRank.WARRIOR:
+                    warriors.append(f"{cat_name} ({cat_age} moons)")
+                elif cat.status.rank == CatRank.APPRENTICE:
+                    apprentices.append(f"{cat_name} ({cat_age} moons)")
+                elif cat.status.rank == CatRank.MEDICINE_APPRENTICE:
+                    medicine_apprentices.append(f"{cat_name} ({cat_age} moons)")
+                elif cat.status.rank == CatRank.MEDIATOR_APPRENTICE:
+                    mediator_apprentices.append(f"{cat_name} ({cat_age} moons)")
+                elif cat.status.rank in (CatRank.KITTEN, CatRank.NEWBORN):
+                    kittens.append(f"{cat_name} ({cat_age} moons)")
+                elif cat.status.rank == CatRank.ELDER:
+                    elders.append(f"{cat_name} ({cat_age} moons)")
+            
+            lines.append("CLAN MEMBERS")
+            lines.append("─" * 80)
+            lines.append("")
+            if leaders:
+                lines.append("Leader:")
+                for cat in leaders:
+                    lines.append(f"  • {cat}")
+                lines.append("")
+            
+            if deputies:
+                lines.append("Deputy:")
+                for cat in deputies:
+                    lines.append(f"  • {cat}")
+                lines.append("")
+            
+            if medicine_cats:
+                lines.append("Medicine Cats:")
+                for cat in medicine_cats:
+                    lines.append(f"  • {cat}")
+                lines.append("")
+            
+            if mediators:
+                lines.append("Mediators:")
+                for cat in mediators:
+                    lines.append(f"  • {cat}")
+                lines.append("")
+            
+            if warriors:
+                lines.append(f"Warriors ({len(warriors)}):")
+                for cat in sorted(warriors):
+                    lines.append(f"  • {cat}")
+                lines.append("")
+            
+            if apprentices:
+                lines.append(f"Apprentices ({len(apprentices)}):")
+                for cat in sorted(apprentices):
+                    lines.append(f"  • {cat}")
+                lines.append("")
+            
+            if medicine_apprentices:
+                lines.append("Medicine Cat Apprentices:")
+                for cat in medicine_apprentices:
+                    lines.append(f"  • {cat}")
+                lines.append("")
+            
+            if mediator_apprentices:
+                lines.append("Mediator Apprentices:")
+                for cat in mediator_apprentices:
+                    lines.append(f"  • {cat}")
+                lines.append("")
+            
+            if kittens:
+                lines.append(f"Kittens ({len(kittens)}):")
+                for cat in sorted(kittens):
+                    lines.append(f"  • {cat}")
+                lines.append("")
+            
+            if elders:
+                lines.append(f"Elders ({len(elders)}):")
+                for cat in sorted(elders):
+                    lines.append(f"  • {cat}")
+                lines.append("")
+            
+            # Total count
+            total_cats = len(leaders) + len(deputies) + len(medicine_cats) + len(mediators) + \
+                         len(warriors) + len(apprentices) + len(medicine_apprentices) + \
+                         len(mediator_apprentices) + len(kittens) + len(elders)
+            lines.append(f"Total Clan Members: {total_cats}")
+        
+    except Exception as e:
+        print(f"Error adding clan roster to export: {e}")
+    
+    if get_clan_setting("export clan stats"):
+        try:
+            lines.append("")
+            lines.append("─" * 80)
+            lines.append("CLAN STATISTICS")
+            lines.append("─" * 80)
+            lines.append("")
+            
+            births_count = len([e for e in births_deaths if "born" in e.lower() or "kit" in e.lower()])
+            deaths_count = len([e for e in births_deaths if "died" in e.lower() or "death" in e.lower()])
+            joins_count = len([e for e in misc_events if "joined" in e.lower() or "join" in e.lower()])
+            
+            lines.append("THIS MOON:")
+            lines.append(f"  Births: {births_count}")
+            lines.append(f"  Deaths: {deaths_count}")
+            lines.append(f"  Joined: {joins_count}")
+            lines.append("")
+            
+            healthy_count = 0
+            injured_count = 0
+            ill_count = 0
+            permanent_conditions = 0
+            
+            for cat in Cat.all_cats.values():
+                if not cat.status.alive_in_player_clan:
+                    continue
+                
+                if cat.injuries:
+                    injured_count += 1
+                if cat.illnesses:
+                    ill_count += 1
+                if cat.permanent_condition:
+                    permanent_conditions += 1
+                if not cat.injuries and not cat.illnesses:
+                    healthy_count += 1
+            
+            lines.append("HEALTH SUMMARY:")
+            lines.append(f"  Healthy: {healthy_count}")
+            lines.append(f"  Injured: {injured_count}")
+            lines.append(f"  Ill: {ill_count}")
+            lines.append(f"  Permanent Conditions: {permanent_conditions}")
+            lines.append("")
+        
+        except Exception as e:
+            print(f"Error adding clan statistics to export: {e}")
+    
+    out_dir = f"{get_save_dir()}/{clan.name}/event_logs"
+    file_path = f"{out_dir}/moon_{clan.age:04d}.txt"
+    
+    try:
+        import os
+        os.makedirs(out_dir, exist_ok=True)
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(lines))
+    except Exception as e:
+        print(f"Failed to export moon events: {e}")
+
+
 def add_faded_offspring_to_faded_cat(parent, offspring):
     """In order to siblings to work correctly, and not to lose relation info on fading, we have to keep track of
     both active and faded cat's faded offpsring. This will add a faded offspring to a faded parents file.
