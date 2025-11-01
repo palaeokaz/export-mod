@@ -4,7 +4,7 @@ A fork of [ClanGen](https://github.com/ClanGenOfficial/clangen) with moon event 
 
 ## What is this?
 Ever spent three hours in ClanGen chaos only to realize you can’t remember why Mousepaw hates Flowertail or how your deputy survived getting hit by a monster three separate times? Yeah, same.
-This mod quietly logs every moon’s drama into tidy little text files, so you don’t have to. It’s basically a secret diary for your Clan—except they have no idea they’re being documented.
+This mod quietly logs every moon’s drama into tidy little text files, so you don’t have to. It’s basically a secret diary for your Clan - except they have no idea they’re being documented.
 
 Great for:
 - Writing fanfic without scrambling for screenshots

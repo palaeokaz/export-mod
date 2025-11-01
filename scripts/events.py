@@ -79,12 +79,6 @@ class Events:
         """
         Handles the moon skipping of the whole Clan.
         """
-        if get_clan_setting("export moon events"):
-            try:
-                game.export_current_moon_events()
-            except Exception:
-                pass
-        
         game.cur_events_list = []
         game.herb_events_list = []
         game.freshkill_event_list = []
@@ -316,6 +310,13 @@ class Events:
                 game.save_events()
             except:
                 SaveError(traceback.format_exc())
+
+        # Export current moon events after all processing is complete
+        if get_clan_setting("export moon events"):
+            try:
+                game.export_current_moon_events()
+            except Exception:
+                pass
 
     @staticmethod
     def trigger_future_events():
